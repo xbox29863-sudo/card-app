@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عجلة الحظ</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0f172a; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        
+        .back-link { position: absolute; top: 20px; right: 20px; color: #94a3b8; text-decoration: none; font-size: 0.9rem; background: #1e293b; padding: 8px 16px; border-radius: 8px; border: 1px solid #334155; }
+        .back-link:hover { color: #fff; background: #334155; }
+
+        h1 { margin-bottom: 25px; font-size: 2rem; color: #f8fafc; text-align: center; }
+        
+        .wheel-container { position: relative; width: 320px; height: 320px; margin-bottom: 25px; }
+        .pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 25px solid #ef4444; z-index: 10; }
+        canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 0 20px rgba(0,0,0,0.5); border: 5px solid #334155; }
+        
+        button { padding: 12px 36px; font-size: 1.1rem; font-weight: bold; background: #2563eb; color: #fff; border: none; border-radius: 30px; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 14px rgba(37,99,235,0.4); }
+        button:hover { background: #1d4ed8; transform: translateY(-2px); }
+        button:disabled { background: #64748b; cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        .result-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+        .modal-content { background: #1e293b; padding: 30px; border-radius: 20px; text-align: center; max-width: 380px; width: 100%; border: 1px solid #334155; }
+        .modal-content h2 { margin-bottom: 15px; color: #38bdf8; font-size: 1.5rem; }
+        .coupon-box { background: #0f172a; border: 2px dashed #38bdf8; padding: 15px; border-radius: 12px; margin: 15px 0; }
+        .coupon-code { font-size: 1.6rem; font-weight: bold; color: #f59e0b; letter-spacing: 2px; font-family: monospace; }
+        .screenshot-notice { font-size: 0.85rem; color: #ef4444; margin-top: 10px; font-weight: bold; }
+        .close-btn { background: #475569; padding: 10px 24px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <a href="index.html" class="back-link">🌐 تغيير اللغة</a>
+
+    <h1 id="titleText">عجلة الحظ</h1>
+
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="320" height="320"></canvas>
+    </div>
+
+    <button id="spinBtn">ادُر العجلة</button>
+
+    <div id="modal" class="result-modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">🎉 مبروك!</h2>
+            <p id="modalMsg"></p>
+            
+            <div id="couponSection" class="coupon-box" style="display: none;">
+                <p style="font-size: 0.9rem; color: #94a3b8;">رمز الخصم الخاص بك:</p>
+                <div id="codeDisplay" class="coupon-code">------</div>
+                <p class="screenshot-notice">📸 التقط صورة للشاشة (Screenshot) وأرسلها للمشرف للتحقق!</p>
+            </div>
+
+            <button class="close-btn" onclick="closeModal()">إغلاق</button>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const selectedLang = urlParams.get('lang') || 'ar';
+
+        const canvas = document.getElementById('wheel');
+        const ctx = canvas.getContext('2d');
+        const spinBtn = document.getElementById('spinBtn');
+        
+        const discounts = ["7%", "10%", "15%", "30%", "50%", "7%", "10%", "15%"];
+        const colors = ["#ef4444", "#f97316", "#f59e0b", "#10b981", "#06b6d4", "#6366f1", "#8b5cf6", "#ec4899"];
+        
+        let currentLang = {};
+        let currentRotation = 0;
+
+        async function loadLang(lang) {
+            try {
+                const res = await fetch(`/lang/${lang}.json`);
+                currentLang = await res.json();
+                document.getElementById('titleText').innerText = currentLang.title;
+                spinBtn.innerText = currentLang.spin;
+                document.dir = (lang === 'ar' || lang === 'ku') ? 'rtl' : 'ltr';
+            } catch(e) { console.error('Error loading lang:', e); }
+        }
+
+        function drawWheel() {
+            const numSlices = discounts.length;
+            const sliceAngle = (2 * Math.PI) / numSlices;
+
+            for (let i = 0; i < numSlices; i++) {
+                ctx.beginPath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.moveTo(160, 160);
+                ctx.arc(160, 160, 160, i * sliceAngle, (i + 1) * sliceAngle);
+                ctx.fill();
+
+                ctx.save();
+                ctx.translate(160, 160);
+                ctx.rotate(i * sliceAngle + sliceAngle / 2);
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 18px sans-serif";
+                ctx.textAlign = "right";
+                ctx.fillText(discounts[i], 140, 6);
+                ctx.restore();
+            }
+        }
+
+        async function spin() {
+            spinBtn.disabled = true;
+            try {
+                const res = await fetch('/api/spin', { method: 'POST' });
+                const data = await res.json();
+
+                if (res.status === 429) {
+                    showModal(currentLang.cooldown, false);
+                    spinBtn.disabled = false;
+                    return;
+                }
+
+                if (!res.ok) {
+                    showModal('حدث خطأ في السيرفر', false);
+                    spinBtn.disabled = false;
+                    return;
+                }
+
+                const targetDiscount = data.discount;
+                const index = discounts.indexOf(targetDiscount);
+                const sliceAngle = 360 / discounts.length;
+                const targetAngle = 360 - (index * sliceAngle) - (sliceAngle / 2);
+                const extraSpins = 360 * 5; 
+                const totalRotation = currentRotation + extraSpins + (targetAngle - (currentRotation % 360));
+
+                canvas.style.transition = "transform 4s cubic-bezier(0.15, 0.9, 0.15, 1)";
+                canvas.style.transform = `rotate(${totalRotation}deg)`;
+                currentRotation = totalRotation;
+
+                setTimeout(() => {
+                    showModal(`${currentLang.won} ${targetDiscount}`, true, data.code);
+                    spinBtn.disabled = false;
+                }, 4000);
+
+            } catch (err) {
+                showModal('تعذر الاتصال بالسيرفر', false);
+                spinBtn.disabled = false;
+            }
+        }
+
+        function showModal(msg, isSuccess, code = null) {
+            document.getElementById('modalTitle').innerText = isSuccess ? "🎉 مبروك!" : "⚠️ تنبيه";
+            document.getElementById('modalMsg').innerText = msg;
+            
+            const couponSection = document.getElementById('couponSection');
+            if (isSuccess && code) {
+                document.getElementById('codeDisplay').innerText = code;
+                couponSection.style.display = 'block';
+            } else {
+                couponSection.style.display = 'none';
+            }
+
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        spinBtn.addEventListener('click', spin);
+
+        drawWheel();
+        loadLang(selectedLang);
+    </script>
+</body>
+</html>

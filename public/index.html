@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختر اللغة | Select Language</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0f172a; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        .card { background: #1e293b; padding: 40px 30px; border-radius: 20px; text-align: center; max-width: 400px; width: 100%; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h1 { margin-bottom: 10px; font-size: 1.8rem; color: #f8fafc; }
+        p { color: #94a3b8; margin-bottom: 30px; font-size: 0.95rem; }
+        .lang-btn { display: block; width: 100%; padding: 14px; margin-bottom: 12px; font-size: 1.1rem; font-weight: bold; color: #fff; background: #334155; border: 2px solid transparent; border-radius: 12px; cursor: pointer; transition: 0.2s; text-decoration: none; }
+        .lang-btn:hover { background: #2563eb; border-color: #60a5fa; transform: translateY(-2px); }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>مرحباً بك 👋</h1>
+        <p>الرجاء اختيار اللغة للبدء / Please choose your language</p>
+
+        <a href="wheel.html?lang=ar" class="lang-btn">العربية</a>
+        <a href="wheel.html?lang=en" class="lang-btn">English</a>
+        <a href="wheel.html?lang=ku" class="lang-btn">کوردی</a>
+        <a href="wheel.html?lang=tr" class="lang-btn">Türkçe</a>
+    </div>
+
+</body>
+</html>

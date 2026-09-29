@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة المشرف والإدارة</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0f172a; color: #fff; padding: 20px; min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        .login-card { background: #1e293b; padding: 40px; border-radius: 16px; max-width: 400px; margin: 100px auto; border: 1px solid #334155; text-align: center; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 1rem; }
+        button { padding: 12px 24px; background: #2563eb; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1rem; transition: 0.2s; }
+        button:hover { background: #1d4ed8; }
+
+        .dashboard { display: none; }
+        .section-box { background: #1e293b; padding: 25px; border-radius: 16px; border: 1px solid #334155; margin-bottom: 25px; }
+        .section-title { font-size: 1.3rem; margin-bottom: 15px; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+
+        /* قسم فحص الكود */
+        .search-group { display: flex; gap: 10px; }
+        .search-group input { margin: 0; }
+        .search-group button { width: 150px; }
+        .result-box { margin-top: 15px; padding: 15px; border-radius: 8px; background: #0f172a; display: none; }
+
+        /* قسم إدارة المخزون */
+        .stock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 15px; }
+        .stock-card { background: #0f172a; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #334155; }
+        .stock-card h4 { color: #f59e0b; font-size: 1.2rem; }
+        .stock-card p { font-size: 0.9rem; color: #94a3b8; margin-top: 5px; }
+
+        .add-stock-form { display: flex; gap: 10px; align-items: center; }
+        .add-stock-form select, .add-stock-form input { margin: 0; }
+
+        /* الجدول */
+        table { width: 100%; border-collapse: collapse; background: #0f172a; border-radius: 8px; overflow: hidden; margin-top: 15px; }
+        th, td { padding: 12px; text-align: right; border-bottom: 1px solid #334155; font-size: 0.9rem; }
+        th { background: #334155; }
+        .code-tag { font-family: monospace; background: #1e293b; padding: 3px 8px; border-radius: 4px; color: #f59e0b; font-weight: bold; }
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
+        .badge-claimed { background: #0284c7; color: #fff; }
+        .badge-redeemed { background: #dc2626; color: #fff; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- شاشة الدخول -->
+        <div id="loginScreen" class="login-card">
+            <h2 style="margin-bottom: 15px;">لوحة المشرف 🔐</h2>
+            <input type="password" id="passInput" placeholder="أدخل كلمة السر">
+            <button onclick="login()">تسجيل الدخول</button>
+            <p id="errorMsg" style="color: #ef4444; margin-top: 10px; display: none;"></p>
+        </div>
+
+        <!-- لوحة التحكم -->
+        <div id="dashboardScreen" class="dashboard">
+            
+            <!-- 1. قسم التحقق وحرق الكود -->
+            <div class="section-box">
+                <div class="section-title">🔍 فحص كود الزبون وحرقه</div>
+                <div class="search-group">
+                    <input type="text" id="codeInput" placeholder="أدخل كود الخصم (مثال: OFF50-A1B2C3)">
+                    <button onclick="checkCode()">فحص الكود</button>
+                </div>
+                <div id="resultBox" class="result-box">
+                    <p id="codeDetails"></p>
+                    <button id="burnBtn" onclick="burnCode()" style="background: #dc2626; margin-top: 10px; display: none;">🔥 حرق الكود (تفعيل الخصم للزبون)</button>
+                </div>
+            </div>
+
+            <!-- 2. قسم المتبقي وإضافة كروت جديدة -->
+            <div class="section-box">
+                <div class="section-title">📊 حالة المخزون وتزويد الكروت</div>
+                <div class="stock-grid" id="stockGrid">
+                    <!-- تعبئة تلقائية -->
+                </div>
+                
+                <hr style="border-color: #334155; margin: 15px 0;">
+                
+                <h4 style="margin-bottom: 10px; color: #94a3b8;">إضافة كروت جديدة للمخزون:</h4>
+                <div class="add-stock-form">
+                    <select id="discountSelect">
+                        <option value="7%">خصم 7%</option>
+                        <option value="10%">خصم 10%</option>
+                        <option value="15%">خصم 15%</option>
+                        <option value="30%">خصم 30%</option>
+                        <option value="50%">خصم 50%</option>
+                    </select>
+                    <input type="number" id="qtyInput" placeholder="عدد الكروت" min="1" value="10">
+                    <button onclick="addStock()" style="background: #10b981; width: 200px;">➕ إضافة الكروت</button>
+                </div>
+            </div>
+
+            <!-- 3. سجل السحوبات -->
+            <div class="section-box">
+                <div class="section-title">📋 سجل الأكواد المسحوبة والمحروقة</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>الكود</th>
+                            <th>الخصم</th>
+                            <th>الحالة</th>
+                            <th>تاريخ السحب</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activityTable"></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let adminPass = '';
+
+        async function login() {
+            const pass = document.getElementById('passInput').value;
+            const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: pass })
+            });
+
+            if (res.ok) {
+                adminPass = pass;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('dashboardScreen').style.display = 'block';
+                loadData();
+            } else {
+                document.getElementById('errorMsg').innerText = 'كلمة السر غير صحيحة';
+                document.getElementById('errorMsg').style.display = 'block';
+            }
+        }
+
+        async function loadData() {
+            const res = await fetch('/api/admin/stats', { headers: { 'Authorization': adminPass } });
+            const data = await res.json();
+
+            // عرض المتبقي لكل خصم
+            const stockGrid = document.getElementById('stockGrid');
+            stockGrid.innerHTML = '';
+            for (const [disc, info] of Object.entries(data.stockBreakdown)) {
+                stockGrid.innerHTML += `
+                    <div class="stock-card">
+                        <h4>${disc}</h4>
+                        <p>المتبقي: <strong style="color: ${info.available > 0 ? '#10b981' : '#ef4444'}">${info.available}</strong> / ${info.total}</p>
+                    </div>
+                `;
+            }
+
+            // عرض السجل
+            const tbody = document.getElementById('activityTable');
+            tbody.innerHTML = '';
+            data.activityList.forEach(c => {
+                const isRedeemed = c.status === 'redeemed';
+                tbody.innerHTML += `
+                    <tr>
+                        <td><span class="code-tag">${c.code}</span></td>
+                        <td><strong>${c.discount}</strong></td>
+                        <td><span class="badge ${isRedeemed ? 'badge-redeemed' : 'badge-claimed'}">${isRedeemed ? 'تم حرقه' : 'مسحوب (غير محروق)'}</span></td>
+                        <td>${new Date(c.claimed_at).toLocaleString('ar-EG')}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function checkCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            if (!code) return;
+
+            const res = await fetch('/api/admin/check-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': adminPass },
+                body: JSON.stringify({ code })
+            });
+
+            const resultBox = document.getElementById('resultBox');
+            const details = document.getElementById('codeDetails');
+            const burnBtn = document.getElementById('burnBtn');
+            resultBox.style.display = 'block';
+
+            if (!res.ok) {
+                const err = await res.json();
+                details.innerHTML = `<span style="color: #ef4444;">❌ ${err.error}</span>`;
+                burnBtn.style.display = 'none';
+                return;
+            }
+
+            const coupon = await res.json();
+            if (coupon.status === 'claimed') {
+                details.innerHTML = `✅ <strong style="color: #10b981;">الكود صالح ومستحق للخصم!</strong><br>الخصم: <strong>${coupon.discount}</strong> | تاريخ السحب: ${new Date(coupon.claimed_at).toLocaleString('ar-EG')}`;
+                burnBtn.style.display = 'block';
+            } else if (coupon.status === 'redeemed') {
+                details.innerHTML = `🔴 <strong style="color: #ef4444;">هذا الكود تم حرقه واستخدامه سابقاً!</strong> بتاريخ: ${new Date(coupon.redeemed_at).toLocaleString('ar-EG')}`;
+                burnBtn.style.display = 'none';
+            } else {
+                details.innerHTML = `⚪ الكود موجود بالمخزون ولكن لم يسحبه أي زبون بعد.`;
+                burnBtn.style.display = 'none';
+            }
+        }
+
+        async function burnCode() {
+            const code = document.getElementById('codeInput').value.trim();
+            const res = await fetch('/api/admin/burn-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': adminPass },
+                body: JSON.stringify({ code })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                checkCode();
+                loadData();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function addStock() {
+            const discount = document.getElementById('discountSelect').value;
+            const quantity = document.getElementById('qtyInput').value;
+
+            const res = await fetch('/api/admin/add-stock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': adminPass },
+                body: JSON.stringify({ discount, quantity })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                loadData();
+            } else {
+                alert(data.error);
+            }
+        }
+    </script>
+</body>
+</html>
